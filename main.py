@@ -8,6 +8,8 @@ GOOD_MATCH_PERCENT = 0.3
 PADDING_PIXELS = 60
 
 # Resize Img WithAspectRatio
+
+
 def resize_with_aspect_ratio_and_add_border(image, width=None, height=None, inter=cv2.INTER_AREA):
     dim = None
     (h, w) = image.shape[:2]
@@ -49,41 +51,50 @@ def resize_with_aspect_ratio_and_add_border(image, width=None, height=None, inte
 
             blank_image[y, x] = rgb_pixel
 
-
-    cv2.imshow("BlackCanvas", blank_image)
+    # cv2.imshow("BlackCanvas", blank_image)
     #key = cv2.waitKey(0)
 
     return blank_image
+
 
 def convert_to_gray_scale(image):
     (h, w) = image.shape[:2]
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return image
 
-def get_wrapped_image(filename):
+
+def get_wrapped_image(filename, template):
     # MAIN ACTIVITIES
-    template = cv2.imread("template/template-empty-gray-box-opacity.png")  # Load the template picture
+    # Load the template picture
+    template = cv2.imread(template)
     url = "data/" + filename + ".jpeg"
     print(url)
     original_test = cv2.imread(url)  # Load test picture
-    test = original_test = resize_with_aspect_ratio_and_add_border(original_test, height=1080)  # Resize test picture
-    test = convert_to_gray_scale(test)  # Convert picture to gray scale color palette
+    test = original_test = resize_with_aspect_ratio_and_add_border(
+        original_test, height=1080)  # Resize test picture
+    # Convert picture to gray scale color palette
+    test = convert_to_gray_scale(test)
 
     # FEATURES
-    orb = cv2.ORB_create(MAX_FEATURES)  # Scelgo il metodo di ricerca dei KeyPoints
+    # Scelgo il metodo di ricerca dei KeyPoints
+    orb = cv2.ORB_create(MAX_FEATURES)
     keypoints1, descriptors1 = orb.detectAndCompute(template, None)
     keypoints2, descriptors2 = orb.detectAndCompute(test, None)
 
     # FEATURES MATCHING
-    matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)  # Chose the matcher
+    matcher = cv2.DescriptorMatcher_create(
+        cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)  # Chose the matcher
     matches = matcher.match(descriptors1, descriptors2, None)  # Make the match
 
     matches = list(matches)
-    matches.sort(key=lambda x: x.distance, reverse=False)  # Sort matches by score
-    numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)  # Calculate how many matches to keep
+    # Sort matches by score
+    matches.sort(key=lambda x: x.distance, reverse=False)
+    # Calculate how many matches to keep
+    numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
     matches = matches[:numGoodMatches]  # Remove not so good matches
 
-    imMatches = cv2.drawMatches(template, keypoints1, test, keypoints2, matches, None)
+    imMatches = cv2.drawMatches(
+        template, keypoints1, test, keypoints2, matches, None)
     saving_url = "./matches/" + filename + ".jpg"
     cv2.imwrite(saving_url, imMatches)
 
@@ -105,11 +116,11 @@ def get_wrapped_image(filename):
     height, width, channels = template.shape
     im2Reg = cv2.warpPerspective(original_test, h, (width, height))
 
-    # Carico maschera
+    # Loading Mask
     mask = cv2.imread("template/mask.png")  # Load the template picture
     mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
 
-    # Applico maschera
+    # Applying Mask
     (h, w) = im2Reg.shape[:2]
     for y in range(h):
         for x in range(w):
@@ -117,20 +128,27 @@ def get_wrapped_image(filename):
             if v < 200:
                 im2Reg[y-1][x-1] = [v, v, v]
 
-
     saving_url = "./results/" + filename + ".jpg"
     cv2.imwrite(saving_url, im2Reg)
 
-    cv2.imshow("Result", im2Reg)
-    key = cv2.waitKey(0)
+    return im2Reg
 
     # cv2.imshow("TemplateView", template)
     # cv2.imshow("TestView", test)
     # cv2.imshow("MatchesView", imMatches)
 
-                                         # Percentage of matches to keep
-TEST_SET = ["matteo", "alessio", "lapo", "matteo", "riccardo", "federico", 3655, 3713, 3967, 4847, 5279, 5325, 5446, 5451]
+
+TEST_SET = ["alessio", "lapo", "matteo", "riccardo",
+            "federico", 3655, 3713, 3967, 4847, 5279, 5325, 5446, 5451]
 
 for user in TEST_SET:
+    # Generate Wrapped Front image
     filename = str(user)+"_doc_fronte"
-    front = get_wrapped_image(filename=filename)
+    front = get_wrapped_image(filename=filename, template="template/template-empty-front.png")
+    # Generate Wrapped Back Image
+    filename = str(user)+"_doc_retro"
+    back = get_wrapped_image(filename=filename, template="template/template-empty-back.png")
+
+    cv2.imshow("ResultFront", front)
+    cv2.imshow("ResultBack", back)
+    key = cv2.waitKey(0)
