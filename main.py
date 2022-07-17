@@ -4,8 +4,10 @@ import scipy
 
 # GLOBAL VARIABLES
 MAX_FEATURES = 6000  # Upperbound limit to the number of features to find on single picture
-GOOD_MATCH_PERCENT = 0.3
+GOOD_MATCH_PERCENT = 0.30
 PADDING_PIXELS = 60
+MAX_PICTURE_HEIGHT = 1080
+
 
 # Resize Img WithAspectRatio
 
@@ -27,8 +29,8 @@ def resize_with_aspect_ratio_and_add_border(image, width=None, height=None, inte
 
     # Create an empty black_img and centering the resized
 
-    w = dim[0] + PADDING_PIXELS*2
-    h = dim[1] + PADDING_PIXELS*2
+    w = dim[0] + PADDING_PIXELS * 2
+    h = dim[1] + PADDING_PIXELS * 2
 
     blank_image = np.zeros((h, w, 3), np.uint8)
 
@@ -47,20 +49,18 @@ def resize_with_aspect_ratio_and_add_border(image, width=None, height=None, inte
             if x2 is None or y2 is None:
                 rgb_pixel = [0, 0, 0]
             else:
-                rgb_pixel = resized_img[y2-1][x2-1]
+                rgb_pixel = resized_img[y2 - 1][x2 - 1]
 
             blank_image[y, x] = rgb_pixel
 
     # cv2.imshow("BlackCanvas", blank_image)
-    #key = cv2.waitKey(0)
+    # key = cv2.waitKey(0)
 
     return blank_image
 
 
-def convert_to_gray_scale(image):
-    (h, w) = image.shape[:2]
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return image
+def rgb_to_gray_scale(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
 def get_wrapped_image(filename, template):
@@ -71,9 +71,9 @@ def get_wrapped_image(filename, template):
     print(url)
     original_test = cv2.imread(url)  # Load test picture
     test = original_test = resize_with_aspect_ratio_and_add_border(
-        original_test, height=1080)  # Resize test picture
+        original_test, height=None)  # Resize test picture
     # Convert picture to gray scale color palette
-    test = convert_to_gray_scale(test)
+    test = rgb_to_gray_scale(test)
 
     # FEATURES
     # Scelgo il metodo di ricerca dei KeyPoints
@@ -96,7 +96,7 @@ def get_wrapped_image(filename, template):
     imMatches = cv2.drawMatches(
         template, keypoints1, test, keypoints2, matches, None)
     saving_url = "./matches/" + filename + ".jpg"
-    cv2.imwrite(saving_url, imMatches)
+    #cv2.imwrite(saving_url, imMatches)
 
     template = cv2.drawKeypoints(template, keypoints1, None)
     test = cv2.drawKeypoints(test, keypoints2, None)
@@ -118,37 +118,82 @@ def get_wrapped_image(filename, template):
 
     # Loading Mask
     mask = cv2.imread("template/mask.png")  # Load the template picture
-    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    mask = rgb_to_gray_scale(mask)
 
-    # Applying Mask
+    # Applying Mask Template pixel per pixel
     (h, w) = im2Reg.shape[:2]
     for y in range(h):
         for x in range(w):
-            v = mask[y-1][x-1]
+            v = mask[y - 1][x - 1]
             if v < 200:
-                im2Reg[y-1][x-1] = [v, v, v]
+                im2Reg[y - 1][x - 1] = [v, v, v]
 
     saving_url = "./results/" + filename + ".jpg"
-    cv2.imwrite(saving_url, im2Reg)
+    #cv2.imwrite(saving_url, im2Reg)
 
     return im2Reg
 
-    # cv2.imshow("TemplateView", template)
-    # cv2.imshow("TestView", test)
-    # cv2.imshow("MatchesView", imMatches)
+
+def rotate_selfie(selfie):
+    # Function performs selfie rotation until a face is found, then break and return the turned picture
+    for i in range(1, 5):
+        # Convert selfie in gray scale
+        selfie_gray = rgb_to_gray_scale(selfie)
+        # Looking for a face in the picture
+        selfie_faces = FACE_CASCADE.detectMultiScale(selfie_gray, 1.5, 8)
+        # Check if at least one face was found
+        if len(selfie_faces):
+            break
+        selfie = cv2.rotate(selfie, cv2.ROTATE_90_CLOCKWISE)
+        # INTEGRARE IL SISTEMA DI ROTAZIONE IN CASO DI NESSUN VOLTO TROVATO
+    return selfie
 
 
-TEST_SET = ["alessio", "lapo", "matteo", "riccardo",
-            "federico", 3655, 3713, 3967, 4847, 5279, 5325, 5446, 5451]
+# Load the cascade1080
+FACE_CASCADE = cv2.CascadeClassifier(
+    'template/haarcascade_frontalface_default.xml')
+
+TEST_SET = ["matteo", "federico", "alessio", "lapo", "riccardo",
+            3655, 3713, 3967, 5325, 5446]
+
 
 for user in TEST_SET:
     # Generate Wrapped Front image
-    filename = str(user)+"_doc_fronte"
-    front = get_wrapped_image(filename=filename, template="template/template-empty-front.png")
-    # Generate Wrapped Back Image
-    filename = str(user)+"_doc_retro"
-    back = get_wrapped_image(filename=filename, template="template/template-empty-back.png")
+    filename = str(user) + "_doc_fronte"
+    front = get_wrapped_image(
+        filename=filename, template="template/template-empty-front.png")
 
-    cv2.imshow("ResultFront", front)
-    cv2.imshow("ResultBack", back)
+    # Generate Wrapped Back Image
+    filename = str(user) + "_doc_retro"
+    back = get_wrapped_image(
+        filename=filename, template="template/template-empty-back.png")
+
+    # Stacking vertically the 2 pictures
+    collage = np.vstack((front, back))
+    # Standardize the image to match the collage heigth
+    collage = resize_with_aspect_ratio_and_add_border(
+        collage, height=MAX_PICTURE_HEIGHT)
+
+    # Loading Selfie
+    selfie = cv2.imread("data/"+str(user)+"_doc_selfie.jpeg")
+    selfie = rotate_selfie(selfie)
+    # Resize the image
+    selfie = resize_with_aspect_ratio_and_add_border(
+        selfie, height=MAX_PICTURE_HEIGHT)
+
+    # Stacking collage with the selfie horizontally
+    collage = np.hstack((collage, selfie))
+
+    # Convert into grayscale
+    gray = rgb_to_gray_scale(collage)
+
+    # Detect faces
+    faces = FACE_CASCADE.detectMultiScale(gray, 1.2, 8)
+
+    # Draw rectangle around the faces
+    for (x, y, w, h) in faces:
+        cv2.rectangle(collage, (x, y), (x + w, y + h), (0, 255, 255), 3)
+
+    cv2.imshow("ResultMerge", collage)
+
     key = cv2.waitKey(0)
