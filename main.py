@@ -160,7 +160,6 @@ def rotate_selfie(selfie):
         # INTEGRARE IL SISTEMA DI ROTAZIONE IN CASO DI NESSUN VOLTO TROVATO
     return selfie
 
-
 # Load the cascade1080
 FACE_CASCADE = cv2.CascadeClassifier(
     'template/haarcascade_frontalface_default.xml')
