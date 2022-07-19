@@ -1,17 +1,19 @@
 import cv2
 import numpy as np
 import scipy
+import face_recognition
 
 # GLOBAL VARIABLES
-MAX_FEATURES = 6000  # Upperbound limit to the number of features to find on single picture
-GOOD_MATCH_PERCENT = 0.30
-PADDING_PIXELS = 60
+MAX_FEATURES = 8000  # Upperbound limit to the number of features to find on single picture
+GOOD_MATCH_PERCENT = 0.08
+PADDING_PIXELS = 30
 MAX_PICTURE_HEIGHT = 1080
+MAX_KEYPOINT_DISTANCE = 80
+
+# 8000 / 0.08 / 30 / 1080 / 80
 
 
 # Resize Img WithAspectRatio
-
-
 def resize_with_aspect_ratio_and_add_border(image, width=None, height=None, inter=cv2.INTER_AREA):
     dim = None
     (h, w) = image.shape[:2]
@@ -87,16 +89,26 @@ def get_wrapped_image(filename, template):
     matches = matcher.match(descriptors1, descriptors2, None)  # Make the match
 
     matches = list(matches)
+
+    # FIRST ALGORYTHM
     # Sort matches by score
     matches.sort(key=lambda x: x.distance, reverse=False)
     # Calculate how many matches to keep
     numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
     matches = matches[:numGoodMatches]  # Remove not so good matches
 
+    newMatches = list()
+    # matches = filter(checkDistance, matches)
+    for match in matches:
+        if (match.distance > MAX_KEYPOINT_DISTANCE):
+            break
+        # print("Distance:", match.distance)
+        newMatches.append(match)
+
     imMatches = cv2.drawMatches(
-        template, keypoints1, test, keypoints2, matches, None)
+        template, keypoints1, test, keypoints2, newMatches, None)
     saving_url = "./matches/" + filename + ".jpg"
-    #cv2.imwrite(saving_url, imMatches)
+    # cv2.imwrite(saving_url, imMatches)
 
     template = cv2.drawKeypoints(template, keypoints1, None)
     test = cv2.drawKeypoints(test, keypoints2, None)
@@ -148,14 +160,12 @@ def rotate_selfie(selfie):
         # INTEGRARE IL SISTEMA DI ROTAZIONE IN CASO DI NESSUN VOLTO TROVATO
     return selfie
 
-
 # Load the cascade1080
 FACE_CASCADE = cv2.CascadeClassifier(
     'template/haarcascade_frontalface_default.xml')
 
-TEST_SET = ["matteo", "federico", "alessio", "lapo", "riccardo",
+TEST_SET = ["federico", "lapo", "federico", "matteo", "alessio", "riccardo",
             3655, 3713, 3967, 5325, 5446]
-
 
 for user in TEST_SET:
     # Generate Wrapped Front image
@@ -184,6 +194,9 @@ for user in TEST_SET:
     # Stacking collage with the selfie horizontally
     collage = np.hstack((collage, selfie))
 
+    saving_url = "./results/" + str(user) + ".jpg"
+    cv2.imwrite(saving_url, resize_with_aspect_ratio_and_add_border(
+        collage, width=1080))
     # Convert into grayscale
     gray = rgb_to_gray_scale(collage)
 
@@ -194,6 +207,33 @@ for user in TEST_SET:
     for (x, y, w, h) in faces:
         cv2.rectangle(collage, (x, y), (x + w, y + h), (0, 255, 255), 3)
 
-    cv2.imshow("ResultMerge", collage)
+    def match_faces(selfie_url, front_url):
 
-    key = cv2.waitKey(0)
+        selfie_image = face_recognition.load_image_file(selfie_url)
+        front_doc_image = face_recognition.load_image_file(front_url)
+        cv2.imshow("Selfie", selfie_image)
+        cv2.imshow("Front", front_doc_image)
+
+        key = cv2.waitKey(0)
+
+        selfie_encoding = face_recognition.face_encodings(selfie_image)
+        front_doc_encoding = face_recognition.face_encodings(front_doc_image)
+        if len(selfie_encoding) and len(front_doc_encoding):
+            front_doc_encoding = front_doc_encoding[0]
+            selfie_encoding = selfie_encoding[0]
+            results = face_recognition.compare_faces(
+                [selfie_encoding], front_doc_encoding)
+            return results
+        return False
+
+    # Save selfie picture
+    selfie_url = "./selfie/"+str(user)+".jpeg"
+    cv2.imwrite(selfie_url, selfie)
+    # Save front picture
+    front_url = "./front/"+str(user)+".jpeg"
+    cv2.imwrite(front_url, front)
+
+    print(match_faces(selfie_url, front_url))
+
+
+#cv2.imshow("ResultMerge", resize_with_aspect_ratio_and_add_border(collage, width=1080))
