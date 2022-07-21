@@ -1,12 +1,3 @@
----
-title: "Pre processore per patente e suggerimento di validazione"
-date: "2022-07-21"
-categories: 
-  - "github"
-  - "portfolio"
-  - "study"
----
-
 ## Il problema
 
 L'idea di questo progetto nasce da un'esigenza reale riscontrata sul lavoro.
