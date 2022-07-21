@@ -160,7 +160,7 @@ def rotate_selfie(selfie):
         # Convert selfie in gray scale
         selfie_gray = rgb_to_gray_scale(selfie)
         # Looking for a face in the picture
-        selfie_faces = FACE_CASCADE.detectMultiScale(selfie_gray, 1.4, 8, 120)
+        selfie_faces = FACE_CASCADE.detectMultiScale(selfie_gray, 1.35, 8)
         # Draw rectangle around the faces
         # Check if at least one face was found
         if len(selfie_faces):
@@ -251,7 +251,7 @@ for user in INPUT_SET:
     # Set color based on matching result
     rectangle_color = (0, 255, 0) if is_a_match[0] else (0, 0, 255) # (B,G,R)
     # Detect faces
-    faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 8, 120)
+    faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 8)
      
     # Draw rectangle around the faces
     for (x, y, w, h) in faces:
