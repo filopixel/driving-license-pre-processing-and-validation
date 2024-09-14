@@ -31,7 +31,7 @@ In questa fase lo scopo è quello di prendere in input le foto di fronte e retro
 
 Una volta caricato l'input cerchiamo di riportare le immagini in un output standard che incornici chiaramente il documento, ruotandolo correttamente e riportandolo, per quanto possibile, nella prospettiva corretta.
 
-Un'esempio del risultato atteso è il seguente:
+Un esempio del risultato atteso è il seguente:
 
 ![](images/doc_retro-1024x768.jpeg)
 
